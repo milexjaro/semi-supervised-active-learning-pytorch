@@ -128,8 +128,8 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-./nips14-ssl/
-./MNIST/
-./saved_data/
-./saved_models/
-./toy_example/
+nips14-ssl/
+MNIST/
+saved_data/
+saved_models/
+toy_example/
