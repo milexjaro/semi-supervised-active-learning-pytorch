@@ -65,7 +65,7 @@ class SemiSupervisedActiveLearningDataset(Dataset):
             print(targets_file_location)
 
             # Squeeze is needed because it has (x, 1, 28, 28 dimension)
-            self.data = torch.squeeze(torch.from_numpy(torch.load(data_file_location))) * 255
+            self.data = (torch.squeeze(torch.from_numpy(torch.load(data_file_location))) * 255).to(torch.uint8)
             self.targets = torch.from_numpy(torch.load(targets_file_location))
             print(len(self.data), len(self.targets))
         except FileNotFoundError:
