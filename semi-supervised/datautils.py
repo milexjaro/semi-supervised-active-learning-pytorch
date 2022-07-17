@@ -126,9 +126,9 @@ def get_mnist(location="./", batch_size=64, labels_per_class=10, algorithm=None)
                         transform=flatten_bernoulli, target_transform=onehot(n_labels))
 
     # Dataloaders for MNIST
-    labelled = torch.utils.data.DataLoader(mnist_train_labelled, batch_size=batch_size, num_workers=2, pin_memory=cuda,
+    labelled = torch.utils.data.DataLoader(mnist_train_labelled, batch_size=batch_size, num_workers=4, pin_memory=cuda,
                                            sampler=RandomSampler(mnist_train_labelled))
-    unlabelled = torch.utils.data.DataLoader(mnist_train_unlabelled, batch_size=batch_size, num_workers=2, pin_memory=cuda,
+    unlabelled = torch.utils.data.DataLoader(mnist_train_unlabelled, batch_size=batch_size, num_workers=4, pin_memory=cuda,
                                            sampler=RandomSampler(mnist_train_unlabelled))
     test = torch.utils.data.DataLoader(mnist_test, batch_size=batch_size, num_workers=2, pin_memory=cuda,
                                            sampler=RandomSampler(mnist_test))
