@@ -45,7 +45,7 @@ class SpriteDataset(Dataset):
 
 class SemiSupervisedActiveLearningDataset(Dataset):
     """Dataset for Semi-Supervised Active Learning experimentation"""
-    def __init__(self, data_location, is_labelled=False, transform=None, target_transform=None, algorithm="", train=True):
+    def __init__(self, data_location, is_labelled=False, transform=None, target_transform=None, algorithm="", train=True, initial_number_of_data=None):
         self.transform = transform
         self.target_transform = target_transform
         
@@ -54,12 +54,14 @@ class SemiSupervisedActiveLearningDataset(Dataset):
             if train:
                 labelled_infix = '_labelled' if is_labelled else '_unlabelled'
                 algorithm_suffix = f'_{algorithm}' if algorithm else ''
+                initial_number_of_data = f'_{initial_number_of_data}' if initial_number_of_data else ''
             else:
                 labelled_infix = ''
                 algorithm_suffix = ''
+                initial_number_of_data = ''
             
-            data_file_location = f"{data_location}/X_{train_infix}{labelled_infix}{algorithm_suffix}.pt"
-            targets_file_location = f"{data_location}/y_{train_infix}{labelled_infix}{algorithm_suffix}.pt"
+            data_file_location = f"{data_location}/X_{train_infix}{labelled_infix}{algorithm_suffix}{initial_number_of_data}.pt"
+            targets_file_location = f"{data_location}/y_{train_infix}{labelled_infix}{algorithm_suffix}{initial_number_of_data}.pt"
 
             print(data_file_location)
             print(targets_file_location)
@@ -106,7 +108,7 @@ class SemiSupervisedActiveLearningDataset(Dataset):
         return self.data
 
 
-def get_mnist(location="./", batch_size=64, labels_per_class=100, algorithm=None):
+def get_mnist(location="./", batch_size=64, labels_per_class=10, algorithm=None):
     from functools import reduce
     from operator import __or__
     from torch.utils.data.sampler import SubsetRandomSampler, RandomSampler
@@ -117,23 +119,11 @@ def get_mnist(location="./", batch_size=64, labels_per_class=100, algorithm=None
     flatten_bernoulli = lambda x: transforms.ToTensor()(x).view(-1).bernoulli()
 
     mnist_train_labelled = SemiSupervisedActiveLearningDataset(f'{location}', train=True, is_labelled=True,
-                        transform=flatten_bernoulli, target_transform=onehot(n_labels), algorithm=algorithm)
+                        transform=flatten_bernoulli, target_transform=onehot(n_labels), algorithm=algorithm, initial_number_of_data=n_labels*labels_per_class)
     mnist_train_unlabelled = SemiSupervisedActiveLearningDataset(f'{location}', train=True, is_labelled=False,
-                        transform=flatten_bernoulli, target_transform=onehot(n_labels), algorithm=algorithm)
+                        transform=flatten_bernoulli, target_transform=onehot(n_labels), algorithm=algorithm, initial_number_of_data=n_labels*labels_per_class)
     mnist_test = SemiSupervisedActiveLearningDataset(f'{location}', train=False,
                         transform=flatten_bernoulli, target_transform=onehot(n_labels))
-
-    def get_sampler(labels, n=None):
-        # Only choose digits in n_labels
-        (indices,) = np.where(reduce(__or__, [labels == i for i in np.arange(n_labels)]))
-
-        # Ensure uniform distribution of labels
-        np.random.shuffle(indices)
-        indices = np.hstack([list(filter(lambda idx: labels[idx] == i, indices))[:n] for i in range(n_labels)])
-
-        indices = torch.from_numpy(indices)
-        sampler = SubsetRandomSampler(indices)
-        return sampler
 
     # Dataloaders for MNIST
     labelled = torch.utils.data.DataLoader(mnist_train_labelled, batch_size=batch_size, num_workers=2, pin_memory=cuda,
@@ -145,29 +135,22 @@ def get_mnist(location="./", batch_size=64, labels_per_class=100, algorithm=None
 
     return labelled, unlabelled, test
 
-def get_mnist_dataset(location="./", batch_size=64, labels_per_class=100, algorithm=None):
-    from functools import reduce
-    from operator import __or__
-    from torch.utils.data.sampler import SubsetRandomSampler, RandomSampler
-    from torchvision.datasets import MNIST
+def get_mnist_dataset(location="./", labels_per_class=100, algorithm=None):
     import torchvision.transforms as transforms
     from utils import onehot
 
     flatten_bernoulli = lambda x: transforms.ToTensor()(x).view(-1).bernoulli()
 
     mnist_train_labelled = SemiSupervisedActiveLearningDataset(f'{location}', train=True, is_labelled=True,
-                        transform=flatten_bernoulli, target_transform=onehot(n_labels), algorithm=algorithm)
+                        transform=flatten_bernoulli, target_transform=onehot(n_labels), algorithm=algorithm, initial_number_of_data=n_labels*labels_per_class)
     mnist_train_unlabelled = SemiSupervisedActiveLearningDataset(f'{location}', train=True, is_labelled=False,
-                        transform=flatten_bernoulli, target_transform=onehot(n_labels), algorithm=algorithm)
+                        transform=flatten_bernoulli, target_transform=onehot(n_labels), algorithm=algorithm, initial_number_of_data=n_labels*labels_per_class)
     mnist_test = SemiSupervisedActiveLearningDataset(f'{location}', train=False,
                         transform=flatten_bernoulli, target_transform=onehot(n_labels))
 
     return mnist_train_labelled, mnist_train_unlabelled, mnist_test
 
-def get_mnist_legacy_dataset(location="./", batch_size=64, labels_per_class=100):
-    from functools import reduce
-    from operator import __or__
-    from torch.utils.data.sampler import SubsetRandomSampler
+def get_mnist_legacy_dataset(location="./"):
     from torchvision.datasets import MNIST
     import torchvision.transforms as transforms
     from utils import onehot
