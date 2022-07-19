@@ -23,6 +23,29 @@ class Classifier(nn.Module):
         x = F.softmax(self.logits(x), dim=-1)
         return x
 
+class CNN(nn.Module):
+    def __init__(self,):
+        super(CNN, self).__init__()
+        self.convs = nn.Sequential(
+                        nn.Conv2d(1, 32, 4),
+                        nn.ReLU(),
+                        nn.Conv2d(32, 32, 4),
+                        nn.ReLU(),
+                        nn.MaxPool2d(2),
+                        nn.Dropout(0.25),
+                        nn.Flatten(),
+                        nn.Linear(11*11*32, 128),
+                        nn.ReLU(),
+                        nn.Dropout(0.5),
+                        nn.Linear(128, 10)
+                    )
+
+    def forward(self, x):
+        out = x.reshape(-1, 1, 28, 28)
+        out = self.convs(out)
+        out = F.softmax(out, dim=-1)
+        return out
+
 
 class DeepGenerativeModel(VariationalAutoencoder):
     def __init__(self, dims):
@@ -43,7 +66,11 @@ class DeepGenerativeModel(VariationalAutoencoder):
 
         self.encoder = Encoder([x_dim + self.y_dim, h_dim, z_dim])
         self.decoder = Decoder([z_dim + self.y_dim, list(reversed(h_dim)), x_dim])
-        self.classifier = Classifier([x_dim, h_dim[0], self.y_dim])
+
+
+        # self.classifier = Classifier([x_dim, h_dim[0], self.y_dim])
+
+        self.classifier = CNN()
 
         for m in self.modules():
             if isinstance(m, nn.Linear):
@@ -63,7 +90,11 @@ class DeepGenerativeModel(VariationalAutoencoder):
         return x_mu
 
     def classify(self, x):
-        logits = self.classifier(x)
+        try:
+            logits = self.classifier(x)
+        except:
+            logits = torch.tensor(self.classifier.predict_proba(x)).cuda()
+        
         return logits
 
     def sample(self, z, y):
