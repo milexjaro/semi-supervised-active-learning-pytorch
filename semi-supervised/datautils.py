@@ -45,7 +45,7 @@ class SpriteDataset(Dataset):
 
 class SemiSupervisedActiveLearningDataset(Dataset):
     """Dataset for Semi-Supervised Active Learning experimentation"""
-    def __init__(self, data_location, is_labelled=False, transform=None, target_transform=None, algorithm="", train=True, initial_number_of_data=None):
+    def __init__(self, data_location, is_labelled=False, transform=None, target_transform=None, algorithm="", train=True, initial_number_of_data=None, data_size_cap=None):
         self.transform = transform
         self.target_transform = target_transform
         
@@ -69,6 +69,10 @@ class SemiSupervisedActiveLearningDataset(Dataset):
             # Squeeze is needed because it has (x, 1, 28, 28 dimension)
             self.data = (torch.squeeze(torch.from_numpy(torch.load(data_file_location))) * 255).to(torch.uint8)
             self.targets = torch.from_numpy(torch.load(targets_file_location))
+
+            if data_size_cap:
+                self.data = self.data[:data_size_cap]
+                self.targets = self.targets[:data_size_cap]
             print(len(self.data), len(self.targets))
         except FileNotFoundError:
             print("File is not found")
@@ -108,7 +112,7 @@ class SemiSupervisedActiveLearningDataset(Dataset):
         return self.data
 
 
-def get_mnist(location="./", batch_size=64, labels_per_class=10, algorithm=None):
+def get_mnist(location="./", batch_size=64, labels_per_class=10, algorithm=None, data_size_cap=None):
     from functools import reduce
     from operator import __or__
     from torch.utils.data.sampler import SubsetRandomSampler, RandomSampler
@@ -119,11 +123,13 @@ def get_mnist(location="./", batch_size=64, labels_per_class=10, algorithm=None)
     flatten_bernoulli = lambda x: transforms.ToTensor()(x).view(-1).bernoulli()
 
     mnist_train_labelled = SemiSupervisedActiveLearningDataset(f'{location}', train=True, is_labelled=True,
-                        transform=flatten_bernoulli, target_transform=onehot(n_labels), algorithm=algorithm, initial_number_of_data=n_labels*labels_per_class)
+                        transform=flatten_bernoulli, target_transform=onehot(n_labels), algorithm=algorithm,
+                        initial_number_of_data=n_labels*labels_per_class, data_size_cap=data_size_cap)
     mnist_train_unlabelled = SemiSupervisedActiveLearningDataset(f'{location}', train=True, is_labelled=False,
-                        transform=flatten_bernoulli, target_transform=onehot(n_labels), algorithm=algorithm, initial_number_of_data=n_labels*labels_per_class)
+                        transform=flatten_bernoulli, target_transform=onehot(n_labels), algorithm=algorithm,
+                        initial_number_of_data=n_labels*labels_per_class, data_size_cap=data_size_cap)
     mnist_test = SemiSupervisedActiveLearningDataset(f'{location}', train=False,
-                        transform=flatten_bernoulli, target_transform=onehot(n_labels))
+                        transform=flatten_bernoulli, target_transform=onehot(n_labels), data_size_cap=data_size_cap)
 
     # Dataloaders for MNIST
     labelled = torch.utils.data.DataLoader(mnist_train_labelled, batch_size=batch_size, num_workers=4, pin_memory=cuda,
