@@ -60,8 +60,8 @@ class SemiSupervisedActiveLearningDataset(Dataset):
                 algorithm_suffix = ''
                 initial_number_of_data = ''
             
-            data_file_location = f"{data_location}/X_{train_infix}{labelled_infix}{algorithm_suffix}{initial_number_of_data}.pt"
-            targets_file_location = f"{data_location}/y_{train_infix}{labelled_infix}{algorithm_suffix}{initial_number_of_data}.pt"
+            data_file_location = f"{data_location}/X_{train_infix}{labelled_infix}{algorithm_suffix}{initial_number_of_data}_base.pt"
+            targets_file_location = f"{data_location}/y_{train_infix}{labelled_infix}{algorithm_suffix}{initial_number_of_data}_base.pt"
 
             print(data_file_location)
             print(targets_file_location)
@@ -70,9 +70,18 @@ class SemiSupervisedActiveLearningDataset(Dataset):
             self.data = (torch.squeeze(torch.from_numpy(torch.load(data_file_location))) * 255).to(torch.uint8)
             self.targets = torch.from_numpy(torch.load(targets_file_location))
 
-            if data_size_cap:
-                self.data = self.data[:data_size_cap]
-                self.targets = self.targets[:data_size_cap]
+            if data_size_cap and train==True:
+                if is_labelled:
+                    self.data = self.data[:data_size_cap]
+                    self.targets = self.targets[:data_size_cap]
+                else:
+                    unused_labelled_data_location = f"{data_location}/X_{train_infix}_labelled{algorithm_suffix}{initial_number_of_data}_base.pt"
+                    self.unused_labelled_data = (torch.squeeze(torch.from_numpy(torch.load(unused_labelled_data_location))) * 255).to(torch.uint8)
+                    self.data = torch.cat((self.data, self.unused_labelled_data[data_size_cap:]), 0)
+
+                    unused_labelled_targets_location = f"{data_location}/y_{train_infix}_labelled{algorithm_suffix}{initial_number_of_data}_base.pt"
+                    self.unused_labelled_targets = torch.from_numpy(torch.load(unused_labelled_targets_location))
+                    self.targets = torch.cat((self.targets, self.unused_labelled_targets[data_size_cap:]), 0)
             print(len(self.data), len(self.targets))
         except FileNotFoundError:
             print("File is not found")
@@ -129,7 +138,7 @@ def get_mnist(location="./", batch_size=64, labels_per_class=10, algorithm=None,
                         transform=flatten_bernoulli, target_transform=onehot(n_labels), algorithm=algorithm,
                         initial_number_of_data=n_labels*labels_per_class, data_size_cap=data_size_cap)
     mnist_test = SemiSupervisedActiveLearningDataset(f'{location}', train=False,
-                        transform=flatten_bernoulli, target_transform=onehot(n_labels), data_size_cap=data_size_cap)
+                        transform=flatten_bernoulli, target_transform=onehot(n_labels))
 
     # Dataloaders for MNIST
     labelled = torch.utils.data.DataLoader(mnist_train_labelled, batch_size=batch_size, num_workers=4, pin_memory=cuda,
