@@ -24,28 +24,49 @@ class Classifier(nn.Module):
         return x
 
 class CNN(nn.Module):
-    def __init__(self,):
+    def __init__(self, dataset="MNIST"):
         super(CNN, self).__init__()
-        self.convs = nn.Sequential(
-                        nn.Conv2d(1, 32, 4),
+        self.dataset = dataset
+        if dataset in ("MNIST", "FASHION"):
+            self.convs = nn.Sequential(
+                            nn.Conv2d(1, 32, 4),
+                            nn.ReLU(),
+                            nn.Conv2d(32, 32, 4),
+                            nn.ReLU(),
+                            nn.MaxPool2d(2),
+                            nn.Dropout(0.25),
+                            nn.Flatten(),
+                            nn.Linear(11*11*32, 128),
+                            nn.ReLU(),
+                            nn.Dropout(0.5),
+                            nn.Linear(128, 10)
+                        )
+        elif dataset == "CIFAR10":
+            self.convs = nn.Sequential(
+                        nn.Conv2d(3, 32, 4),
                         nn.ReLU(),
                         nn.Conv2d(32, 32, 4),
                         nn.ReLU(),
                         nn.MaxPool2d(2),
                         nn.Dropout(0.25),
                         nn.Flatten(),
-                        nn.Linear(11*11*32, 128),
+                        nn.Linear(13*13*32, 128),
                         nn.ReLU(),
                         nn.Dropout(0.5),
                         nn.Linear(128, 10)
                     )
 
     def forward(self, x):
-        out = x.reshape(-1, 1, 28, 28)
+        if len(x.shape) != 2:
+            out = x
+        else:
+            if self.dataset in ("MNIST", "FASHION"):
+                out = x.reshape(-1, 1, 28, 28)
+            elif self.dataset == "CIFAR10":
+                out = x.reshape(-1, 3, 32, 32)
         out = self.convs(out)
         out = F.softmax(out, dim=-1)
         return out
-
 
 class DeepGenerativeModel(VariationalAutoencoder):
     def __init__(self, dims):
