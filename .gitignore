@@ -130,7 +130,9 @@ dmypy.json
 
 nips14-ssl/
 MNIST/
-saved_data/
-saved_models/
+FashionMNIST/
+cifar*
+saved_data*/
+saved_models*/
 toy_example/
 examples/
