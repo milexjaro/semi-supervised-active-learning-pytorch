@@ -121,30 +121,30 @@ class SemiSupervisedActiveLearningDataset(Dataset):
         return self.data
 
 
-def get_dataset(location="./", dataset = "MNIST", seed = 111, batch_size=64, labels_per_class=10, algorithm=None):
-    from functools import reduce
+def get_dataset(location="./", dataset = "MNIST", seed = 111, batch_size=64, labels_per_class=10, algorithm=None, data_size_cap=None):
     from operator import __or__
-    from torch.utils.data.sampler import SubsetRandomSampler, RandomSampler
-    from torchvision.datasets import MNIST
+    from torch.utils.data.sampler import RandomSampler
     import torchvision.transforms as transforms
     from utils import onehot
 
     flatten_bernoulli = lambda x: transforms.ToTensor()(x).view(-1).bernoulli()
 
-    mnist_train_labelled = SemiSupervisedActiveLearningDataset(f'{location}', train=True, dataset = "MNIST", seed = 111, is_labelled=True,
-                        transform=flatten_bernoulli, target_transform=onehot(n_labels), algorithm=algorithm, initial_number_of_data=n_labels*labels_per_class)
-    mnist_train_unlabelled = SemiSupervisedActiveLearningDataset(f'{location}', train=True, dataset = "MNIST", seed = 111, is_labelled=False,
-                        transform=flatten_bernoulli, target_transform=onehot(n_labels), algorithm=algorithm, initial_number_of_data=n_labels*labels_per_class)
-    mnist_test = SemiSupervisedActiveLearningDataset(f'{location}', train=False, dataset = "MNIST", seed = 111,
+    dataset_train_labelled = SemiSupervisedActiveLearningDataset(f'{location}', train=True, dataset = dataset, seed = seed, is_labelled=True,
+                        transform=flatten_bernoulli, target_transform=onehot(n_labels), algorithm=algorithm,
+                        initial_number_of_data=n_labels*labels_per_class, data_size_cap=data_size_cap)
+    dataset_train_unlabelled = SemiSupervisedActiveLearningDataset(f'{location}', train=True, dataset = dataset, seed = seed, is_labelled=False,
+                        transform=flatten_bernoulli, target_transform=onehot(n_labels), algorithm=algorithm,
+                        initial_number_of_data=n_labels*labels_per_class, data_size_cap=data_size_cap)
+    dataset_test = SemiSupervisedActiveLearningDataset(f'{location}', train=False, dataset = dataset, seed = seed,
                         transform=flatten_bernoulli, target_transform=onehot(n_labels))
 
-    # Dataloaders
-    labelled = torch.utils.data.DataLoader(mnist_train_labelled, batch_size=batch_size, num_workers=4, pin_memory=cuda,
-                                           sampler=RandomSampler(mnist_train_labelled))
-    unlabelled = torch.utils.data.DataLoader(mnist_train_unlabelled, batch_size=batch_size, num_workers=4, pin_memory=cuda,
-                                           sampler=RandomSampler(mnist_train_unlabelled))
-    test = torch.utils.data.DataLoader(mnist_test, batch_size=batch_size, num_workers=2, pin_memory=cuda,
-                                           sampler=RandomSampler(mnist_test))
+    # Dataloaders for dataset
+    labelled = torch.utils.data.DataLoader(dataset_train_labelled, batch_size=batch_size, num_workers=4, pin_memory=cuda,
+                                           sampler=RandomSampler(dataset_train_labelled))
+    unlabelled = torch.utils.data.DataLoader(dataset_train_unlabelled, batch_size=batch_size, num_workers=4, pin_memory=cuda,
+                                           sampler=RandomSampler(dataset_train_unlabelled))
+    test = torch.utils.data.DataLoader(dataset_test, batch_size=batch_size, num_workers=4, pin_memory=cuda,
+                                           sampler=RandomSampler(dataset_test))
 
     return labelled, unlabelled, test
 
