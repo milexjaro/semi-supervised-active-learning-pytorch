@@ -82,6 +82,9 @@ class SemiSupervisedActiveLearningDataset(Dataset):
                     unused_labelled_targets_location = f"{data_location}/{dataset}_y_{train_infix}_labelled{algorithm_suffix}{initial_number_of_data}_{seed}.pt"
                     self.unused_labelled_targets = torch.from_numpy(torch.load(unused_labelled_targets_location))
                     self.targets = torch.cat((self.targets, self.unused_labelled_targets[data_size_cap:]), 0)
+            if dataset == 'CIFAR10':
+                self.data = self.data.permute(0, 2, 3, 1)  # convert to HWC
+            
             print(len(self.data), len(self.targets))
         except FileNotFoundError:
             print("File is not found")
@@ -94,7 +97,10 @@ class SemiSupervisedActiveLearningDataset(Dataset):
 
         # doing this so that it is consistent with all other datasets
         # to return a PIL Image
-        img = Image.fromarray(img.numpy(), mode="L")
+        try:
+          img = Image.fromarray(img.numpy(), mode="L")
+        except:
+          img = Image.fromarray(img.numpy())
 
         if self.transform is not None:
             img = self.transform(img)
